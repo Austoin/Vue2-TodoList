@@ -195,3 +195,139 @@ taskkill /PID <PID> /F
 
 - 检查数据卷挂载：`docker exec todolist cat /app/tasks.json`
 - 确保容器有写入权限
+
+---
+
+## 原理说明
+
+### Docker 和本地程序的关系
+
+```
+你的电脑
+│
+├── tasks.json  ←────┬────→  Docker 容器内的 Express
+│                    │        (只是桥梁)
+│                    │
+└── 实际数据存在这里  ←──────  读和写都是这个文件
+```
+
+**关键点：**
+- Docker 容器里的 Express 直接读写 `tasks.json`
+- 通过 `-v ./tasks.json:/app/tasks.json` 把容器内的文件映射到本地
+- 删除 Docker 容器 → 数据还在 `tasks.json`
+- 重启 Docker → 继续读 `tasks.json`
+
+### Cloudflare Tunnel 的作用
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                      你的电脑                            │
+│                                                         │
+│  ┌─────────────────────┐      ┌─────────────────────┐   │
+│  │  todolist 容器       │      │  cf-tunnel 容器      │   │
+│  │                     │      │                     │   │
+│  │  作用：              │      │  作用：             │   │
+│  │  - 处理 API 请求     │      │  - 把内网变公网     │   │
+│  │  - 读写 tasks.json  │      │  - 转发请求         │   │
+│  └─────────────────────┘      └─────────────────────┘   │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+| 容器 | 作用 |
+|------|------|
+| **todolist** | "服务员" - 接待客人（上菜/收钱） |
+| **cf-tunnel** | "前台/传话筒" - 告诉外面的人怎么找到服务员 |
+
+---
+
+## GitHub Pages vs Docker + Cloudflare
+
+| 功能 | GitHub Pages | Docker + Cloudflare |
+|------|-------------|---------------------|
+| 前端页面 | ✅ 可以 | ✅ 可以 |
+| 后端 API | ❌ 不行 | ✅ 可以 |
+| 数据保存 | ❌ 不行 | ✅ 可以 |
+| 实时交互 | ❌ 不行 | ✅ 可以 |
+
+**结论：** GitHub Pages 只能托管静态文件，无法运行后端 API，不适合需要数据保存的应用。
+
+---
+
+## 多项目公网访问配置
+
+### 单隧道限制
+
+一个 Cloudflare Tunnel 只能映射**一个**本地端口：
+- `--url http://localhost:4096` → 只能映射到 4096 端口
+
+### 多项目方案
+
+**方案 1：创建多个隧道**
+
+```bash
+# 项目 A（端口 4096）
+docker run -d --network host --name cf-tunnel-a cloudflare/cloudflared tunnel --url http://localhost:4096
+
+# 项目 B（端口 3000）
+docker run -d --network host --name cf-tunnel-b cloudflare/cloudflared tunnel --url http://localhost:3000
+```
+
+**方案 2：使用 Cloudflare 仪表盘配置**
+
+1. 在 Cloudflare Zero Trust → Access → Tunnels 中配置
+2. 添加多个 Public Hostname 指向不同本地服务
+
+---
+
+## 常见错误及解决方案
+
+### Error 524（超时）
+
+**原因：** 后端服务未运行或无响应
+
+**解决方案：**
+```bash
+# 1. 检查容器是否运行
+docker ps
+
+# 2. 如果没运行，启动它
+docker run -d -p 4096:4096 -v ./tasks.json:/app/tasks.json --name todolist todolist-backend
+
+# 3. 本地测试
+curl http://localhost:4096/api/tasks
+```
+
+### context canceled
+
+**原因：** 电脑休眠/网络断开/请求超时
+
+**解决方案：**
+1. 关闭电脑休眠：Windows → 设置 → 电源 → 休眠设置为"从不"
+2. 保持电脑活跃（移动鼠标/敲键盘）
+3. 重新创建隧道：
+```bash
+docker stop cf-tunnel
+docker rm cf-tunnel
+docker run -d --network host --name cf-tunnel cloudflare/cloudflared tunnel --url http://localhost:4096
+```
+
+### 端口被占用
+
+**解决方案：**
+```bash
+# 查找占用端口的进程
+netstat -ano | findstr :4096
+
+# 杀掉进程
+taskkill /PID <PID> /F
+```
+
+### 电脑关机后公网失效
+
+**原因：** Cloudflare Tunnel 只是"隧道"，你的电脑是"服务器"
+
+**解决方案（按推荐程度排序）：**
+1. **使用云服务器**（推荐）- 24小时运行
+2. **保持电脑开机**（不推荐，费电）
+3. **使用云数据库** - 数据保存在云端
