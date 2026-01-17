@@ -1,0 +1,18 @@
+services:
+  todolist-backend:
+    build: .
+    container_name: todolist-server
+    ports:
+      - "4096:4096"
+    volumes:
+      - ./tasks.json:/app/tasks.json
+    restart: unless-stopped
+
+  # Cloudflare Tunnel 边车容器（可选）
+  # cloudflare-tunnel:
+  #   image: cloudflare/cloudflared:latest
+  #   command: tunnel --no-autoupdate run --token YOUR_TOKEN
+  #   environment:
+  #     - TUNNEL_TOKEN=YOUR_TOKEN
+  #   depends_on:
+  #     - todolist-backend

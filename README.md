@@ -223,6 +223,53 @@ npm run preview
 
 ---
 
+## 🐳 Docker 部署（可选）
+
+### 1. 构建后端镜像
+
+```bash
+docker build -t todolist-backend .
+```
+
+### 2. 启动后端容器
+
+```bash
+docker run -d -p 4096:4096 -v ./tasks.json:/app/tasks.json --name todolist todolist-backend
+```
+
+### 3. 公网穿透（Cloudflare Tunnel）
+
+**方式一：使用 Docker（推荐）**
+
+```bash
+docker run -d --network host --name cf-tunnel cloudflare/cloudflared tunnel --url http://localhost:4096
+```
+
+查看日志获取公网链接：
+```bash
+docker logs cf-tunnel
+```
+
+**方式二：使用本地 cloudflared**
+
+```bash
+# 安装 cloudflared（Windows）
+choco install cloudflared
+
+# 运行隧道
+cloudflared tunnel --url http://localhost:4096
+```
+
+### 4. 修改前端 API 地址
+
+如果使用公网访问，修改 `src/App.vue` 中的 API 地址：
+
+```javascript
+const API_BASE = 'https://你的公网域名.trycloudflare.com/api'
+```
+
+---
+
 ## 📚 组件说明
 
 ### App.vue - 根组件

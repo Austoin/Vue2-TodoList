@@ -3,7 +3,7 @@ import TodoHeader from './components/TodoHeader.vue'
 import TodoInput from './components/TodoInput.vue'
 import TodoList from './components/TodoList.vue'
 
-const API_BASE = 'http://localhost:4096/api'
+const API_BASE = 'https://interview-estimation-motors-swimming.trycloudflare.com/api'
 
 export default {
     components: {
