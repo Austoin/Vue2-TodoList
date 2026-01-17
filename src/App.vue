@@ -17,7 +17,7 @@ export default {
     data() {
         return {
             // 主题状态
-            isDark: false,
+            isDark: true,
             // 背景图片路径
             backgroundImage: '',
             // 背景透明度
