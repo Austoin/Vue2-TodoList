@@ -65,27 +65,43 @@ export default {
     flex: 1;
     padding: 12px 16px;
     font-size: 1rem;
-    border: 2px solid #e0e0e0;
+    border: 2px solid #ccc;
     border-radius: 10px;
     outline: none;
     transition: border-color 0.3s, box-shadow 0.3s;
+    background: #f5f5f5;
+    color: #333;
 }
 
 .task-input:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+    border-color: #666;
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+    background: #fff;
 }
 
 .task-input::placeholder {
-    color: #aaa;
+    color: #999;
+}
+
+/* 暗色模式 */
+:global(body.dark-theme) .task-input {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: #3a3a5a;
+    color: #e0e0e0;
+}
+
+:global(body.dark-theme) .task-input:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .add-btn {
     padding: 12px 20px;
     font-size: 1rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
+    background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+    color: #333;
+    border: 1px solid #ccc;
     border-radius: 10px;
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;
@@ -94,6 +110,17 @@ export default {
 
 .add-btn:hover {
     transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* 暗色模式下的添加按钮 */
+:global(body.dark-theme) .add-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+}
+
+:global(body.dark-theme) .add-btn:hover {
     box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
 }
 

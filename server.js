@@ -37,7 +37,9 @@ function readTasks() {
     return {
         todayTasks: [],
         tomorrowTasks: [],
-        taskIdCounter: 1
+        taskIdCounter: 1,
+        dailyTasks: {},
+        lastSavedDate: null
     };
 }
 

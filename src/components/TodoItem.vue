@@ -64,25 +64,44 @@ export default {
     align-items: center;
     padding: 15px;
     margin-bottom: 10px;
-    background: #f8f9fa;
+    background: #f5f5f5;
     border-radius: 10px;
-    border-left: 4px solid #667eea;
+    border-left: 4px solid #999;
     transition: all 0.3s ease;
 }
 
 .task-item:hover {
-    background: #f0f0f0;
+    background: #e8e8e8;
     transform: translateX(5px);
 }
 
 .task-item.completed {
-    border-left-color: #4CAF50;
+    border-left-color: #27ae60;
     background: #e8f5e9;
+}
+
+/* 暗色模式 */
+:global(body.dark-theme) .task-item {
+    background: rgba(0, 0, 0, 0.2);
+    border-left-color: #3a3a5a;
+}
+
+:global(body.dark-theme) .task-item:hover {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+:global(body.dark-theme) .task-item.completed {
+    border-left-color: #27ae60;
+    background: rgba(39, 174, 96, 0.15);
 }
 
 .task-item.completed .task-title {
     text-decoration: line-through;
     color: #999;
+}
+
+:global(body.dark-theme) .task-item.completed .task-title {
+    color: #666;
 }
 
 .task-content {
@@ -96,6 +115,10 @@ export default {
     width: 20px;
     height: 20px;
     cursor: pointer;
+    accent-color: #666;
+}
+
+:global(body.dark-theme) .task-checkbox {
     accent-color: #667eea;
 }
 
@@ -110,9 +133,17 @@ export default {
     word-break: break-word;
 }
 
+:global(body.dark-theme) .task-title {
+    color: #e0e0e0;
+}
+
 .task-time {
     font-size: 0.75rem;
     color: #999;
+}
+
+:global(body.dark-theme) .task-time {
+    color: #a0a0b0;
 }
 
 .delete-btn {
