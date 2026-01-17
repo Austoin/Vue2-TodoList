@@ -3,6 +3,8 @@ import TodoHeader from './components/TodoHeader.vue'
 import TodoInput from './components/TodoInput.vue'
 import TodoList from './components/TodoList.vue'
 
+const API_BASE = 'http://localhost:4096/api'
+
 export default {
     components: {
         TodoHeader,
@@ -22,6 +24,47 @@ export default {
     },
 
     methods: {
+        // 保存所有任务到后端
+        async saveTasks() {
+            try {
+                console.log('正在保存任务...')
+                const response = await fetch(`${API_BASE}/tasks`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        todayTasks: this.todayTasks,
+                        tomorrowTasks: this.tomorrowTasks,
+                        taskIdCounter: this.taskIdCounter
+                    })
+                })
+                const result = await response.json()
+                console.log('保存结果:', result)
+            } catch (error) {
+                console.error('保存任务失败:', error)
+                console.error('API 地址:', API_BASE)
+            }
+        },
+
+        // 从后端加载任务
+        async loadTasks() {
+            try {
+                const response = await fetch(`${API_BASE}/tasks`)
+                const data = await response.json()
+                this.todayTasks = data.todayTasks || []
+                this.tomorrowTasks = data.tomorrowTasks || []
+                this.taskIdCounter = data.taskIdCounter || 1
+
+                // 计算最大ID以避免ID冲突
+                const allTasks = [...this.todayTasks, ...this.tomorrowTasks]
+                if (allTasks.length > 0) {
+                    const maxId = Math.max(...allTasks.map(task => task.id))
+                    this.taskIdCounter = maxId + 1
+                }
+            } catch (error) {
+                console.error('加载任务失败:', error)
+            }
+        },
+
         // 添加今日任务
         addTodayTask(taskTitle) {
             if (taskTitle.trim() === '') return
@@ -31,6 +74,7 @@ export default {
                 completed: false,
                 createdAt: new Date().toLocaleString('zh-CN')
             })
+            this.saveTasks()
         },
 
         // 添加明日任务
@@ -42,16 +86,19 @@ export default {
                 completed: false,
                 createdAt: new Date().toLocaleString('zh-CN')
             })
+            this.saveTasks()
         },
 
         // 删除今日任务
         deleteTodayTask(taskId) {
             this.todayTasks = this.todayTasks.filter(task => task.id !== taskId)
+            this.saveTasks()
         },
 
         // 删除明日任务
         deleteTomorrowTask(taskId) {
             this.tomorrowTasks = this.tomorrowTasks.filter(task => task.id !== taskId)
+            this.saveTasks()
         },
 
         // 切换今日任务完成状态
@@ -60,6 +107,7 @@ export default {
             if (task) {
                 task.completed = !task.completed
             }
+            this.saveTasks()
         },
 
         // 切换明日任务完成状态
@@ -68,6 +116,7 @@ export default {
             if (task) {
                 task.completed = !task.completed
             }
+            this.saveTasks()
         }
     },
 
@@ -83,45 +132,37 @@ export default {
         }
     },
 
-    watch: {
-        // 监听今日任务变化，保存到本地存储
-        todayTasks: {
-            handler(newTasks) {
-                localStorage.setItem('todayTasks', JSON.stringify(newTasks))
-            },
-            deep: true
-        },
-
-        // 监听明日任务变化，保存到本地存储
-        tomorrowTasks: {
-            handler(newTasks) {
-                localStorage.setItem('tomorrowTasks', JSON.stringify(newTasks))
-            },
-            deep: true
-        }
-    },
-
-    // 生命周期钩子：组件挂载时从本地存储加载数据
-    mounted() {
+    // 生命周期钩子：组件挂载时从后端加载数据
+    async mounted() {
+        // 先检查 localStorage 是否有旧数据，有则迁移到后端
         const savedTodayTasks = localStorage.getItem('todayTasks')
         const savedTomorrowTasks = localStorage.getItem('tomorrowTasks')
         const savedCounter = localStorage.getItem('taskIdCounter')
 
-        if (savedTodayTasks) {
-            this.todayTasks = JSON.parse(savedTodayTasks)
-        }
-        if (savedTomorrowTasks) {
-            this.tomorrowTasks = JSON.parse(savedTomorrowTasks)
-        }
-        if (savedCounter) {
-            this.taskIdCounter = parseInt(savedCounter)
-        }
+        if (savedTodayTasks || savedTomorrowTasks || savedCounter) {
+            // 有旧数据，先迁移到后端
+            this.todayTasks = savedTodayTasks ? JSON.parse(savedTodayTasks) : []
+            this.tomorrowTasks = savedTomorrowTasks ? JSON.parse(savedTomorrowTasks) : []
+            this.taskIdCounter = savedCounter ? parseInt(savedCounter) : 1
 
-        // 计算最大ID以避免ID冲突
-        const allTasks = [...this.todayTasks, ...this.tomorrowTasks]
-        if (allTasks.length > 0) {
-            const maxId = Math.max(...allTasks.map(task => task.id))
-            this.taskIdCounter = maxId + 1
+            // 计算最大ID
+            const allTasks = [...this.todayTasks, ...this.tomorrowTasks]
+            if (allTasks.length > 0) {
+                const maxId = Math.max(...allTasks.map(task => task.id))
+                this.taskIdCounter = maxId + 1
+            }
+
+            // 保存到后端
+            await this.saveTasks()
+            console.log('数据已从 localStorage 迁移到后端')
+
+            // 清除 localStorage
+            localStorage.removeItem('todayTasks')
+            localStorage.removeItem('tomorrowTasks')
+            localStorage.removeItem('taskIdCounter')
+        } else {
+            // 没有旧数据，从后端加载
+            await this.loadTasks()
         }
     }
 }
@@ -179,7 +220,11 @@ export default {
 
 body {
     font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background-color: #f5f5f5;
+    background-image: 
+        linear-gradient(rgba(200, 200, 200, 0.5) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(200, 200, 200, 0.5) 1px, transparent 1px);
+    background-size: 20px 20px;
     min-height: 100vh;
 }
 
@@ -202,10 +247,11 @@ body {
     flex: 1;
     min-width: 350px;
     max-width: 500px;
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.98);
+    border-radius: 15px;
     padding: 25px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e0e0;
 }
 
 .today-section {

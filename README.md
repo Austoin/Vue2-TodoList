@@ -9,7 +9,11 @@ Vue2 TodoList/
 ├── index.html              # 入口 HTML 文件
 ├── package.json            # 项目配置文件
 ├── vite.config.js          # Vite 构建配置
+├── server.js               # Express 后端服务器
+├── tasks.json              # 任务数据存储文件
 ├── README.md               # 项目说明文档
+├── RESUME_PROJECT.md       # 简历项目介绍
+├── LOG.md                  # 开发日志
 └── src/
     ├── main.js             # 应用入口文件
     ├── App.vue             # 根组件
@@ -30,7 +34,7 @@ Vue2 TodoList/
 | 🗑️ 删除任务 | 点击删除按钮移除任务 |
 | ✅ 完成状态 | 勾选复选框标记任务完成 |
 | 📊 统计显示 | 实时显示已完成/总任务数 |
-| 💾 本地存储 | 数据自动保存到 localStorage |
+| 💾 后端存储 | 数据自动保存到服务器 JSON 文件 |
 | 🎨 响应式设计 | 适配桌面端和移动端 |
 
 ---
@@ -190,6 +194,13 @@ computed: {
 npm install
 ```
 
+### 启动后端服务器（必需）
+
+```bash
+node server.js
+```
+服务器运行在 http://localhost:4096
+
 ### 启动开发服务器
 
 ```bash
@@ -208,6 +219,8 @@ npm run build
 npm run preview
 ```
 
+### 前后端都需要启动才能正常使用
+
 ---
 
 ## 📚 组件说明
@@ -217,7 +230,7 @@ npm run preview
 - **职责**：管理全局状态，协调子组件
 - **数据**：`todayTasks`、`tomorrowTasks`、`taskIdCounter`
 - **方法**：添加/删除/切换任务状态
-- **特性**：使用 `watch` 深度监听实现数据持久化
+- **特性**：通过 REST API 与后端通信实现数据持久化
 
 ### TodoHeader.vue - 头部组件
 
