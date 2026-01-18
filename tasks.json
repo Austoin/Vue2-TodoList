@@ -1,20 +1,32 @@
 {
   "todayTasks": [
     {
-      "id": 5,
+      "id": 1,
       "title": "雨：leetcode滑动窗口",
       "completed": false,
-      "createdAt": "2026/1/18 02:46:02"
+      "createdAt": "2026/1/18 10:10:41"
     },
     {
-      "id": 6,
-      "title": "添加日历功能保存task.json数据，实现切换",
-      "completed": true,
-      "createdAt": "2026/1/18 03:24:18"
+      "id": 2,
+      "title": "雨：学习C++第1-3章",
+      "completed": false,
+      "createdAt": "2026/1/18 10:31:19"
+    },
+    {
+      "id": 3,
+      "title": "雨：阅读一篇英语文章",
+      "completed": false,
+      "createdAt": "2026/1/18 10:32:52"
+    },
+    {
+      "id": 4,
+      "title": "react",
+      "completed": false,
+      "createdAt": "2026/1/18 13:19:22"
     }
   ],
   "tomorrowTasks": [],
-  "taskIdCounter": 7,
+  "taskIdCounter": 5,
   "dailyTasks": {
     "2026-01-17": [
       {
@@ -32,18 +44,40 @@
     ],
     "2026-01-18": [
       {
-        "id": 5,
+        "id": 1,
         "title": "雨：leetcode滑动窗口",
         "completed": false,
-        "createdAt": "2026/1/18 02:46:02"
+        "createdAt": "2026/1/18 10:10:41"
       },
       {
+        "id": 2,
+        "title": "雨：学习C++第1-3章",
+        "completed": false,
+        "createdAt": "2026/1/18 10:31:19"
+      },
+      {
+        "id": 3,
+        "title": "雨：阅读一篇英语文章",
+        "completed": false,
+        "createdAt": "2026/1/18 10:32:52"
+      },
+      {
+        "id": 4,
+        "title": "react",
+        "completed": false,
+        "createdAt": "2026/1/18 13:19:22"
+      }
+    ],
+    "2026-01-19": [
+      {
         "id": 6,
-        "title": "添加日历功能保存task.json数据，实现切换",
-        "completed": true,
-        "createdAt": "2026/1/18 03:24:18"
+        "title": "element plus",
+        "completed": false,
+        "createdAt": "2026/1/18 13:45:59"
       }
     ]
   },
-  "lastSavedDate": "2026-01-18"
+  "lastSavedDate": "2026-01-18",
+  "taskExpirationDays": 7,
+  "archivedTasks": {}
 }

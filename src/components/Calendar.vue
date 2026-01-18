@@ -382,20 +382,26 @@ export default {
 }
 
 .calendar-day.selected {
-    background: #666;
+    background: #667eea;
     color: white;
+    box-shadow: 0 0 15px rgba(102, 126, 234, 0.6);
 }
 
 .calendar-day.selected.has-tasks {
-    background: #555;
+    background: #5a6fd6;
+    box-shadow: 0 0 15px rgba(102, 126, 234, 0.6);
 }
 
 :global(body.dark-theme) .calendar-day.selected {
-    background: #667eea;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.8);
+    border: 2px solid rgba(255, 255, 255, 0.3);
 }
 
 :global(body.dark-theme) .calendar-day.selected.has-tasks {
-    background: #5a6fd6;
+    background: linear-gradient(135deg, #764ba2 0%, #8b5cf6 100%);
+    box-shadow: 0 0 20px rgba(118, 75, 162, 0.8);
+    border: 2px solid rgba(255, 255, 255, 0.3);
 }
 
 .calendar-day.has-tasks {
@@ -434,7 +440,13 @@ export default {
     color: #ccc;
 }
 
+:global(body.dark-theme) .calendar-day.selected .day-number {
+    color: #ffffff;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
 :global(body.dark-theme) .calendar-day.selected .task-count {
     color: #ffeb3b;
+    text-shadow: 0 0 5px rgba(255, 235, 59, 0.5);
 }
 </style>

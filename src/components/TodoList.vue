@@ -31,7 +31,18 @@ export default {
     computed: {
         // 判断是否有任务
         hasTasks() {
-            return this.tasks.length > 0
+            return this.sortedTasks.length > 0
+        },
+        // 对任务进行排序：未完成的在前，完成的在后
+        sortedTasks() {
+            return [...this.tasks].sort((a, b) => {
+                // 如果完成状态不同，未完成的在前
+                if (a.completed !== b.completed) {
+                    return a.completed ? 1 : -1
+                }
+                // 如果完成状态相同，按创建时间倒序（最新的在前）
+                return new Date(b.createdAt) - new Date(a.createdAt)
+            })
         }
     }
 }
@@ -42,7 +53,7 @@ export default {
         <!-- 有任务时显示列表 -->
         <transition-group name="list" tag="ul" class="task-list" v-if="hasTasks">
             <TodoItem 
-                v-for="task in tasks" 
+                v-for="task in sortedTasks" 
                 :key="task.id"
                 :task="task"
                 @delete="handleDelete"

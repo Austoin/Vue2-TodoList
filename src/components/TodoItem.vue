@@ -131,10 +131,20 @@ export default {
     color: #333;
     margin-bottom: 5px;
     word-break: break-word;
+    /* 移除字体特效：清除亮光和模糊 */
+    text-shadow: none;
+    filter: none;
+    font-weight: bold;
+    letter-spacing: normal;
 }
 
 :global(body.dark-theme) .task-title {
     color: #e0e0e0;
+    /* 移除字体特效：清除亮光和模糊 */
+    text-shadow: none;
+    filter: none;
+    font-weight: bold;
+    letter-spacing: normal;
 }
 
 .task-time {
