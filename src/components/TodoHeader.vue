@@ -94,8 +94,8 @@ export default {
 /* Light模式 - 灰色系渐变效果 */
 :global(body:not(.dark-theme)) .title {
     background: linear-gradient(90deg, #666666 0%, #333333 50%, #1a1a1a 100%);
-    -webkit-background-clip: text;
     background-clip: text;
+    -webkit-background-clip: text;
     font-weight: 800;
     font-size: 2.8rem;
     text-shadow: none;
@@ -104,24 +104,24 @@ export default {
 
 :global(body:not(.dark-theme)) .subtitle {
     background: linear-gradient(90deg, #999999 0%, #666666 100%);
-    -webkit-background-clip: text;
     background-clip: text;
+    -webkit-background-clip: text;
     font-weight: 500;
     color: #555555;
 }
 
 :global(body:not(.dark-theme)) .date {
     background: linear-gradient(90deg, #555555 0%, #333333 100%);
-    -webkit-background-clip: text;
     background-clip: text;
+    -webkit-background-clip: text;
     font-weight: 600;
     color: #333333;
 }
 
 :global(body:not(.dark-theme)) .time {
     background: linear-gradient(90deg, #777777 0%, #444444 100%);
-    -webkit-background-clip: text;
     background-clip: text;
+    -webkit-background-clip: text;
     font-weight: 600;
     color: #444444;
 }
@@ -134,8 +134,8 @@ export default {
 
 :global(body.dark-theme) .title {
     background: linear-gradient(90deg, #87ceeb 0%, #8b5cf6 50%, #ec4899 100%);
-    -webkit-background-clip: text;
     background-clip: text;
+    -webkit-background-clip: text;
     font-weight: 800;
     font-size: 2.8rem;
     text-shadow: none;
@@ -144,24 +144,24 @@ export default {
 
 :global(body.dark-theme) .subtitle {
     background: linear-gradient(90deg, #a78bfa 0%, #c084fc 100%);
-    -webkit-background-clip: text;
     background-clip: text;
+    -webkit-background-clip: text;
     font-weight: 500;
     color: #c0b0d0; /* 回退颜色 - 确保可见 */
 }
 
 :global(body.dark-theme) .date {
     background: linear-gradient(90deg, #67e8f9 0%, #22d3ee 100%);
-    -webkit-background-clip: text;
     background-clip: text;
+    -webkit-background-clip: text;
     font-weight: 600;
     color: #67e8f9; /* 回退颜色 - 确保可见 */
 }
 
 :global(body.dark-theme) .time {
     background: linear-gradient(90deg, #a5b4fc 0%, #818cf8 100%);
-    -webkit-background-clip: text;
     background-clip: text;
+    -webkit-background-clip: text;
     font-weight: 600;
     color: #a5b4fc; /* 回退颜色 - 确保可见 */
 }

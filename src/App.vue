@@ -4,7 +4,7 @@ import TodoInput from './components/TodoInput.vue'
 import TodoList from './components/TodoList.vue'
 import Calendar from './components/Calendar.vue'
 
-const API_BASE = 'http://localhost:4096/api'
+const API_BASE = '/api'
 
 export default {
     components: {
@@ -21,21 +21,17 @@ export default {
             // 背景图片路径
             backgroundImage: '',
             // 背景透明度
-            backgroundOpacity: 0.3,
+            backgroundOpacity: 0.6,
             // 是否显示背景设置面板
             showBackgroundSettings: false,
-            // 今日任务列表
-            todayTasks: [],
-            // 明日任务列表
-            tomorrowTasks: [],
+            // 所有任务列表
+            allTasks: [],
             // 任务ID计数器
             taskIdCounter: 1,
-            // 每日历史任务记录 { '2024-01-15': [tasks...] }
-            dailyTasks: {},
             // 是否显示日历
             showCalendar: false,
-            // 上次保存的日期
-            lastSavedDate: null,
+            // 当前选中的日期
+            currentDate: null,
             // 标记是否已初始化
             isInitialized: false,
             // 任务过期策略: 0-永不过期, 7-7天, 30-30天
@@ -163,10 +159,19 @@ export default {
         async saveImageToIndexedDB(imageData, id = 'background') {
             try {
                 const db = await this.getIndexedDB()
-                const transaction = db.transaction(['images'], 'readwrite')
-                const store = transaction.objectStore('images')
-                store.put({ id, data: imageData, timestamp: Date.now() })
-                return true
+                return new Promise((resolve) => {
+                    const transaction = db.transaction(['images'], 'readwrite')
+                    const store = transaction.objectStore('images')
+                    const request = store.put({ id, data: imageData, timestamp: Date.now() })
+                    request.onsuccess = () => {
+                        console.log('图片已保存到IndexedDB')
+                        resolve(true)
+                    }
+                    request.onerror = () => {
+                        console.error('保存图片到IndexedDB失败')
+                        resolve(false)
+                    }
+                })
             } catch (error) {
                 console.error('保存图片到IndexedDB失败:', error)
                 return false
@@ -217,13 +222,6 @@ export default {
             return `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`
         },
 
-        // 获取明天的显示日期
-        getTomorrowDisplayDate() {
-            const tomorrow = new Date()
-            tomorrow.setDate(tomorrow.getDate() + 1)
-            return `${tomorrow.getFullYear()}年${tomorrow.getMonth() + 1}月${tomorrow.getDate()}日`
-        },
-
         // 获取指定日期的下一天日期字符串
         getNextDayDateString(dateStr) {
             const date = new Date(dateStr)
@@ -236,12 +234,19 @@ export default {
 
         // 获取当前选中日期的下一天显示日期
         getCurrentNextDayDisplayDate() {
-            if (this.lastSavedDate) {
-                const nextDateStr = this.getNextDayDateString(this.lastSavedDate)
+            if (this.currentDate) {
+                const nextDateStr = this.getNextDayDateString(this.currentDate)
                 const date = new Date(nextDateStr)
                 return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`
             }
             return this.getTomorrowDisplayDate()
+        },
+
+        // 获取明天的显示日期
+        getTomorrowDisplayDate() {
+            const tomorrow = new Date()
+            tomorrow.setDate(tomorrow.getDate() + 1)
+            return `${tomorrow.getFullYear()}年${tomorrow.getMonth() + 1}月${tomorrow.getDate()}日`
         },
 
         // 初始化任务数据
@@ -250,56 +255,57 @@ export default {
             this.isInitialized = true
 
             const today = this.getTodayDateString()
-            const savedDate = this.lastSavedDate
-
+            
             console.log('========== 初始化任务开始 ==========')
             console.log('今天日期:', today)
-            console.log('保存的日期:', savedDate)
-            console.log('当前 todayTasks 数量:', this.todayTasks.length)
+            console.log('当前选中的日期:', this.currentDate)
+            console.log('allTasks 数量:', this.allTasks.length)
 
-            // 如果保存的日期不是今天，保存历史并切换到今天
-            if (savedDate && savedDate !== today) {
-                console.log('从历史日期切换到今天...')
-
-                // 1. 将当前任务保存到历史（昨天的任务）
-                if (this.todayTasks.length > 0) {
-                    this.dailyTasks[savedDate] = JSON.parse(JSON.stringify(this.todayTasks))
-                    console.log(`已保存 ${savedDate} 的任务记录到历史`)
+            // 如果 currentDate 为空或不是今天，需要处理
+            if (!this.currentDate || this.currentDate !== today) {
+                console.log('currentDate 不是今天，需要检查任务转移')
+                
+                // 检查是否需要转移未完成任务到今天
+                const lastSavedDate = localStorage.getItem('lastTaskDate')
+                console.log('lastSavedDate:', lastSavedDate)
+                
+                // 如果上次保存的日期是过去的一天，需要转移未完成任务
+                if (lastSavedDate && lastSavedDate !== today && lastSavedDate < today) {
+                    console.log('从', lastSavedDate, '转移未完成任务到今天')
+                    
+                    // 找到所有属于 lastSavedDate 且未完成的任务
+                    const tasksToMove = this.allTasks.filter(task => 
+                        task.date === lastSavedDate && !task.completed
+                    )
+                    
+                    if (tasksToMove.length > 0) {
+                        console.log('找到', tasksToMove.length, '个未完成任务需要转移')
+                        
+                        // 直接修改任务的日期字段
+                        tasksToMove.forEach(task => {
+                            task.date = today
+                        })
+                        
+                        console.log('已完成任务日期转移')
+                        
+                        // 只有任务被转移时才保存
+                        await this.saveTasks()
+                    }
                 }
+                
+                // 设置 currentDate 为今天
+                this.currentDate = today
+                localStorage.setItem('lastTaskDate', today)
+                console.log('已设置当前日期为今天:', today)
+            } else {
+                // currentDate 已经是今天，更新 lastSavedDate（不需要保存整个数据）
+                localStorage.setItem('lastTaskDate', this.currentDate)
+                console.log('currentDate 已经是今天，无需转移任务')
             }
 
-            // 2. 更新 lastSavedDate 为今天
-            this.lastSavedDate = today
-            localStorage.setItem('lastTaskDate', today)
-
-            // 3. 如果 dailyTasks 中有今天的任务，加载今天的任务
-            // 如果没有今天的任务且 todayTasks 为空，保持空数组
-            if (this.dailyTasks[today] && this.dailyTasks[today].length > 0) {
-                console.log('从历史记录加载今天的任务')
-                this.todayTasks = JSON.parse(JSON.stringify(this.dailyTasks[today]))
-            } else if (this.todayTasks.length > 0) {
-                // 如果 todayTasks 有数据（从后端加载的昨天的任务），
-                // 但我们现在已经切换到今天，所以这些任务应该保存到今天
-                // 检查这些任务是否属于今天
-                const taskDate = savedDate || today
-                if (taskDate !== today && this.todayTasks.length > 0) {
-                    // 任务是昨天的，今天还没有任务，保持空数组
-                    console.log('任务是昨天的，今天还没有任务')
-                    this.todayTasks = []
-                } else {
-                    // 任务就是今天的，保存到 dailyTasks
-                    this.dailyTasks[today] = JSON.parse(JSON.stringify(this.todayTasks))
-                    console.log('已保存当前任务到今天的记录')
-                }
-            }
-            // 如果 todayTasks 为空且 dailyTasks 也没有今天的任务，保持空数组
-
-            // 4. 清空明日任务
-            this.tomorrowTasks = []
-
-            // 5. 保存所有数据
-            await this.saveTasks()
             console.log('========== 初始化任务结束 ==========')
+            console.log('最终 currentDate:', this.currentDate)
+            console.log('最终 allTasks 数量:', this.allTasks.length)
         },
 
         // 保存所有任务到后端（带重试机制）
@@ -314,11 +320,9 @@ export default {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            todayTasks: this.todayTasks,
-                            tomorrowTasks: this.tomorrowTasks,
+                            allTasks: this.allTasks,
                             taskIdCounter: this.taskIdCounter,
-                            dailyTasks: this.dailyTasks,
-                            lastSavedDate: this.lastSavedDate || this.getTodayDateString(),
+                            currentDate: this.currentDate,
                             taskExpirationDays: this.taskExpirationDays,
                             archivedTasks: this.archivedTasks
                         })
@@ -355,33 +359,31 @@ export default {
         // 从后端加载任务
         async loadTasks() {
             try {
-                const response = await fetch(`${API_BASE}/tasks`)
+                // 添加时间戳防止缓存
+                const response = await fetch(`${API_BASE}/tasks?t=${Date.now()}`)
                 const data = await response.json()
-                this.todayTasks = data.todayTasks || []
-                this.tomorrowTasks = data.tomorrowTasks || []
-                this.taskIdCounter = data.taskIdCounter || 1
-                this.dailyTasks = data.dailyTasks || {}
-                this.lastSavedDate = data.lastSavedDate || null
-                this.taskExpirationDays = data.taskExpirationDays || 0
-                this.archivedTasks = data.archivedTasks || {}
-
-                // 应用任务过期策略
-                this.applyTaskExpiration()
-
-                const allTasks = [...this.todayTasks, ...this.tomorrowTasks]
-                if (allTasks.length > 0) {
-                    const maxId = Math.max(...allTasks.map(task => task.id))
+                
+                console.log('从后端加载数据:', data)
+                
+                // 只有当后端数据有任务时才更新
+                if (data.allTasks && data.allTasks.length > 0) {
+                    this.allTasks = data.allTasks
+                    this.taskIdCounter = data.taskIdCounter || 1
+                    this.currentDate = data.currentDate || null
+                    this.taskExpirationDays = data.taskExpirationDays || 0
+                    this.archivedTasks = data.archivedTasks || {}
+                    
+                    // 应用任务过期策略
+                    this.applyTaskExpiration()
+                    
+                    // 更新任务ID计数器
+                    const maxId = Math.max(...this.allTasks.map(task => task.id))
                     this.taskIdCounter = maxId + 1
+                } else {
+                    console.log('后端数据为空，保持本地数据')
                 }
             } catch (error) {
                 console.error('加载任务失败:', error)
-            }
-        },
-
-        // 同步今日任务到每日历史记录
-        syncTodayTasksToDailyTasks() {
-            if (this.lastSavedDate && this.todayTasks.length > 0) {
-                this.dailyTasks[this.lastSavedDate] = JSON.parse(JSON.stringify(this.todayTasks))
             }
         },
 
@@ -395,29 +397,35 @@ export default {
             
             const expirationDateStr = `${expirationDate.getFullYear()}-${String(expirationDate.getMonth() + 1).padStart(2, '0')}-${String(expirationDate.getDate()).padStart(2, '0')}`
 
-            // 检查每个日期的任务
-            Object.keys(this.dailyTasks).forEach(dateStr => {
-                if (dateStr < expirationDateStr) {
-                    // 该日期的任务已过期，移到归档
-                    const completedTasks = this.dailyTasks[dateStr].filter(t => t.completed)
-                    const incompleteTasks = this.dailyTasks[dateStr].filter(t => !t.completed)
-                    
-                    if (completedTasks.length > 0) {
-                        if (!this.archivedTasks[dateStr]) {
-                            this.archivedTasks[dateStr] = []
-                        }
-                        this.archivedTasks[dateStr].push(...completedTasks)
-                        console.log(`已归档 ${dateStr} 的 ${completedTasks.length} 个完成任务`)
-                    }
-                    
-                    // 保留未完成任务在原日期
-                    if (incompleteTasks.length > 0) {
-                        this.dailyTasks[dateStr] = incompleteTasks
+            // 检查每个任务
+            const tasksToArchive = []
+            const tasksToKeep = []
+            
+            this.allTasks.forEach(task => {
+                if (task.date < expirationDateStr) {
+                    if (task.completed) {
+                        tasksToArchive.push(task)
                     } else {
-                        delete this.dailyTasks[dateStr]
+                        // 未完成任务保留在原日期
+                        tasksToKeep.push(task)
                     }
+                } else {
+                    tasksToKeep.push(task)
                 }
             })
+            
+            // 归档完成任务
+            if (tasksToArchive.length > 0) {
+                const dateStr = tasksToArchive[0].date
+                if (!this.archivedTasks[dateStr]) {
+                    this.archivedTasks[dateStr] = []
+                }
+                this.archivedTasks[dateStr].push(...tasksToArchive)
+                console.log(`已归档 ${tasksToArchive.length} 个完成任务`)
+            }
+            
+            // 更新任务列表
+            this.allTasks = tasksToKeep
         },
 
         // 更新任务过期策略
@@ -428,173 +436,90 @@ export default {
             this.saveTasks()
         },
 
-        // 添加今日任务
+        // 添加当前日期的任务
         addTodayTask(taskTitle) {
             if (taskTitle.trim() === '') return
-            this.todayTasks.push({
+            this.allTasks.push({
                 id: this.taskIdCounter++,
                 title: taskTitle,
                 completed: false,
+                date: this.currentDate,
                 createdAt: new Date().toLocaleString('zh-CN')
             })
-            // 同步到每日历史记录
-            this.syncTodayTasksToDailyTasks()
             this.saveTasks()
         },
 
-        // 添加明日任务（当前选中日期的下一天）
+        // 添加明天任务
         addTomorrowTask(taskTitle) {
             if (taskTitle.trim() === '') return
-            const nextDateStr = this.getNextDayDateString(this.lastSavedDate || this.getTodayDateString())
-            const newTask = {
+            const nextDateStr = this.getNextDayDateString(this.currentDate || this.getTodayDateString())
+            this.allTasks.push({
                 id: this.taskIdCounter++,
                 title: taskTitle,
                 completed: false,
+                date: nextDateStr,
                 createdAt: new Date().toLocaleString('zh-CN')
-            }
-            if (!this.dailyTasks[nextDateStr]) {
-                this.dailyTasks[nextDateStr] = []
-            }
-            this.dailyTasks[nextDateStr].push(newTask)
+            })
             this.saveTasks()
         },
 
-        // 删除今日任务
-        deleteTodayTask(taskId) {
-            this.todayTasks = this.todayTasks.filter(task => task.id !== taskId)
-            // 同步到每日历史记录
-            this.syncTodayTasksToDailyTasks()
+        // 删除任务
+        deleteTask(taskId) {
+            this.allTasks = this.allTasks.filter(task => task.id !== taskId)
             this.saveTasks()
         },
 
-        // 删除明日任务（当前选中日期的下一天）
-        deleteTomorrowTask(taskId) {
-            const nextDateStr = this.getNextDayDateString(this.lastSavedDate || this.getTodayDateString())
-            if (this.dailyTasks[nextDateStr]) {
-                this.dailyTasks[nextDateStr] = this.dailyTasks[nextDateStr].filter(task => task.id !== taskId)
-            }
-            this.saveTasks()
-        },
-
-        // 切换今日任务完成状态
-        toggleTodayTask(taskId) {
-            const task = this.todayTasks.find(task => task.id === taskId)
+        // 切换任务完成状态
+        toggleTask(taskId) {
+            const task = this.allTasks.find(task => task.id === taskId)
             if (task) {
                 task.completed = !task.completed
-            }
-            // 同步到每日历史记录
-            this.syncTodayTasksToDailyTasks()
-            this.saveTasks()
-        },
-
-        // 切换明日任务完成状态（当前选中日期的下一天）
-        toggleTomorrowTask(taskId) {
-            const nextDateStr = this.getNextDayDateString(this.lastSavedDate || this.getTodayDateString())
-            if (this.dailyTasks[nextDateStr]) {
-                const task = this.dailyTasks[nextDateStr].find(task => task.id === taskId)
-                if (task) {
-                    task.completed = !task.completed
-                }
             }
             this.saveTasks()
         },
 
         // 日历任务变更处理
-        handleCalendarTaskChange(newDailyTasks) {
-            console.log('handleCalendarTaskChange:', JSON.stringify(newDailyTasks))
-            // 使用深拷贝确保数据隔离
-            this.dailyTasks = JSON.parse(JSON.stringify(newDailyTasks))
+        handleCalendarTaskChange(newAllTasks) {
+            console.log('handleCalendarTaskChange:', newAllTasks)
+            this.allTasks = JSON.parse(JSON.stringify(newAllTasks))
             this.saveTasks()
         },
 
         // 日历添加任务
         handleTaskAdd(event) {
             const { date, task } = event
-            if (!this.dailyTasks[date]) {
-                this.dailyTasks[date] = []
-            }
-            this.dailyTasks[date].push(task)
-            // 如果是当前选中的日期，更新todayTasks
-            if (this.lastSavedDate === date) {
-                this.todayTasks = JSON.parse(JSON.stringify(this.dailyTasks[date]))
-            }
+            this.allTasks.push({
+                ...task,
+                date: date
+            })
             this.saveTasks()
         },
 
         // 日历切换任务状态
         handleTaskToggle(event) {
-            const { date, taskId } = event
-            if (this.dailyTasks[date]) {
-                const task = this.dailyTasks[date].find(t => t.id === taskId)
-                if (task) {
-                    task.completed = !task.completed
-                    // 如果是当前选中的日期，更新todayTasks
-                    if (this.lastSavedDate === date) {
-                        this.todayTasks = JSON.parse(JSON.stringify(this.dailyTasks[date]))
-                    }
-                    this.saveTasks()
-                }
+            const { taskId } = event
+            const task = this.allTasks.find(t => t.id === taskId)
+            if (task) {
+                task.completed = !task.completed
+                this.saveTasks()
             }
         },
 
         // 日历删除任务
         handleTaskDelete(event) {
-            const { date, taskId } = event
-            if (this.dailyTasks[date]) {
-                this.dailyTasks[date] = this.dailyTasks[date].filter(t => t.id !== taskId)
-                // 如果是当前选中的日期，更新todayTasks
-                if (this.lastSavedDate === date) {
-                    this.todayTasks = JSON.parse(JSON.stringify(this.dailyTasks[date]))
-                }
-                this.saveTasks()
-            }
+            const { taskId } = event
+            this.allTasks = this.allTasks.filter(t => t.id !== taskId)
+            this.saveTasks()
         },
 
         // 日历日期点击处理 - 切换到该日期的任务并关闭日历
         handleCalendarDateSelect(dateInfo) {
-            const today = this.getTodayDateString()
-            
             console.log('========== 日历日期选择开始 ==========')
             console.log('选择的日期:', dateInfo.dateStr)
-            console.log('当前 lastSavedDate:', this.lastSavedDate)
-            console.log('当前 todayTasks 数量:', this.todayTasks.length)
-            console.log('dailyTasks 中目标日期的任务:', this.dailyTasks[dateInfo.dateStr])
+            console.log('当前选中的日期:', this.currentDate)
             
-            // 如果点击的是今天，需要加载今天的任务
-            if (dateInfo.dateStr === today) {
-                console.log('点击的是今天，加载今天的任务')
-                // 保存当前任务（如果之前查看的是其他日期）
-                if (this.lastSavedDate && this.lastSavedDate !== today && this.todayTasks.length > 0) {
-                    console.log('保存当前任务到:', this.lastSavedDate)
-                    this.dailyTasks[this.lastSavedDate] = JSON.parse(JSON.stringify(this.todayTasks))
-                }
-                // 加载今天的任务
-                const todayTaskList = this.dailyTasks[today] || []
-                this.todayTasks = JSON.parse(JSON.stringify(todayTaskList))
-                this.lastSavedDate = today
-                localStorage.setItem('lastTaskDate', today)
-                this.saveTasks()
-                this.showCalendar = false
-                return
-            }
-            
-            // 保存当前任务到历史（使用深拷贝避免引用问题）
-            if (this.lastSavedDate && this.todayTasks.length > 0) {
-                console.log('保存当前任务到:', this.lastSavedDate)
-                this.dailyTasks[this.lastSavedDate] = JSON.parse(JSON.stringify(this.todayTasks))
-                console.log('保存后 dailyTasks:', JSON.stringify(this.dailyTasks))
-            }
-            
-            // 切换到该日期的任务（使用深拷贝避免引用问题）
-            const dateTasks = this.dailyTasks[dateInfo.dateStr] || []
-            console.log('加载目标日期任务:', dateTasks)
-            this.todayTasks = JSON.parse(JSON.stringify(dateTasks))
-            console.log('加载后 todayTasks 数量:', this.todayTasks.length)
-            
-            // 不清空明天任务，保持不变
-            
-            // 更新日期
-            this.lastSavedDate = dateInfo.dateStr
+            // 更新当前选中的日期
+            this.currentDate = dateInfo.dateStr
             localStorage.setItem('lastTaskDate', dateInfo.dateStr)
             
             this.saveTasks()
@@ -657,45 +582,52 @@ export default {
     },
 
     computed: {
-        // 今日已完成任务数
-        todayCompletedCount() {
-            return this.todayTasks.filter(task => task.completed).length
+        // 获取当前选中日期的任务
+        currentDateTasks() {
+            if (!this.currentDate) {
+                return []
+            }
+            return this.allTasks.filter(task => task.date === this.currentDate)
         },
 
-        // 明日已完成任务数
-        tomorrowCompletedCount() {
-            return this.tomorrowTasks.filter(task => task.completed).length
+        // 获取当前选中日期的下一天的任务
+        nextDayTasks() {
+            if (!this.currentDate) {
+                return []
+            }
+            const nextDateStr = this.getNextDayDateString(this.currentDate)
+            return this.allTasks.filter(task => task.date === nextDateStr)
+        },
+
+        // 当前选中日期已完成任务数
+        currentDateCompletedCount() {
+            return this.currentDateTasks.filter(task => task.completed).length
+        },
+
+        // 当前选中日期下一天已完成任务数
+        nextDayCompletedCount() {
+            return this.nextDayTasks.filter(task => task.completed).length
         },
 
         // 获取当前显示的日期标题
         currentDateTitle() {
-            if (this.lastSavedDate) {
-                const [year, month, day] = this.lastSavedDate.split('-')
+            if (this.currentDate) {
+                const [year, month, day] = this.currentDate.split('-')
                 return `${year}年${parseInt(month)}月${parseInt(day)}日`
             }
             return this.getTodayDisplayDate()
         },
 
-        // 合并今日任务和日历历史任务用于日历显示
+        // 合并所有任务用于日历显示
         allDateTasks() {
-            const result = { ...this.dailyTasks }
-            // 使用 lastSavedDate 作为当前日期的任务来源
-            // 因为 todayTasks 可能不是今天的任务，而是 lastSavedDate 对应的任务
-            if (this.lastSavedDate) {
-                result[this.lastSavedDate] = this.todayTasks
-            } else {
-                result[this.getTodayDateString()] = this.todayTasks
-            }
+            const result = {}
+            this.allTasks.forEach(task => {
+                if (!result[task.date]) {
+                    result[task.date] = []
+                }
+                result[task.date].push(task)
+            })
             return result
-        },
-
-        // 获取当前选中日期下一天的任务
-        currentNextDayTasks() {
-            if (!this.lastSavedDate) {
-                return this.tomorrowTasks
-            }
-            const nextDateStr = this.getNextDayDateString(this.lastSavedDate)
-            return this.dailyTasks[nextDateStr] || []
         },
 
         // 背景样式
@@ -746,29 +678,37 @@ export default {
         // 加载保存的背景设置
         await this.loadBackgroundSettings()
 
-        const savedTodayTasks = localStorage.getItem('todayTasks')
-        const savedTomorrowTasks = localStorage.getItem('tomorrowTasks')
+        // 亮色模式下默认设置背景图片
+        if (!this.isDark && !this.backgroundImage) {
+            this.backgroundImage = '/vue.jpg'
+            localStorage.setItem('backgroundImage', '/vue.jpg')
+        }
+
+        const savedTasks = localStorage.getItem('allTasks')
         const savedCounter = localStorage.getItem('taskIdCounter')
+        const savedDate = localStorage.getItem('lastTaskDate')
 
-        if (savedTodayTasks || savedTomorrowTasks || savedCounter) {
-            this.todayTasks = savedTodayTasks ? JSON.parse(savedTodayTasks) : []
-            this.tomorrowTasks = savedTomorrowTasks ? JSON.parse(savedTomorrowTasks) : []
+        if (savedTasks || savedCounter) {
+            this.allTasks = savedTasks ? JSON.parse(savedTasks) : []
             this.taskIdCounter = savedCounter ? parseInt(savedCounter) : 1
+            this.currentDate = savedDate || this.getTodayDateString()
 
-            const allTasks = [...this.todayTasks, ...this.tomorrowTasks]
-            if (allTasks.length > 0) {
-                const maxId = Math.max(...allTasks.map(task => task.id))
+            if (this.allTasks.length > 0) {
+                const maxId = Math.max(...this.allTasks.map(task => task.id))
                 this.taskIdCounter = maxId + 1
             }
 
             await this.saveTasks()
             console.log('数据已从 localStorage 迁移到后端')
 
-            localStorage.removeItem('todayTasks')
-            localStorage.removeItem('tomorrowTasks')
+            localStorage.removeItem('allTasks')
             localStorage.removeItem('taskIdCounter')
         } else {
             await this.loadTasks()
+            // 确保 currentDate 有值
+            if (!this.currentDate) {
+                this.currentDate = this.getTodayDateString()
+            }
         }
 
         await this.initializeTasks()
@@ -831,6 +771,8 @@ export default {
                 <label>📁 本地上传：</label>
                 <input 
                     type="file" 
+                    id="backgroundFile"
+                    name="backgroundFile"
                     accept="image/*" 
                     @change="handleBackgroundUpload"
                     class="file-input"
@@ -843,6 +785,8 @@ export default {
                 <div class="url-input-group">
                     <input 
                         type="url" 
+                        id="backgroundUrl"
+                        name="backgroundUrl"
                         v-model="backgroundUrlInput"
                         placeholder="https://example.com/image.jpg"
                         class="url-input"
@@ -850,6 +794,7 @@ export default {
                     >
                     <button 
                         class="url-btn"
+                        type="button"
                         @click="handleBackgroundUrlInput"
                         :disabled="!backgroundUrlInput.trim()"
                     >
@@ -863,6 +808,8 @@ export default {
                 <label>透明度：{{ backgroundOpacity }}</label>
                 <input 
                     type="range" 
+                    id="backgroundOpacity"
+                    name="backgroundOpacity"
                     min="0" 
                     max="1" 
                     step="0.1" 
@@ -871,7 +818,7 @@ export default {
                     class="opacity-slider"
                 >
             </div>
-            <button class="reset-btn" @click="resetBackground">重置背景</button>
+            <button class="reset-btn" type="button" @click="resetBackground">重置背景</button>
             
             <hr class="settings-divider">
             
@@ -971,37 +918,41 @@ export default {
         </div>
 
         <div class="main-content" v-if="!showCalendar">
-            <!-- 今日任务区域 -->
+            <!-- 当前日期任务区域 -->
             <div class="task-section today-section">
                 <h2 class="section-title">📅 {{ currentDateTitle }} - 任务</h2>
                 <p class="task-stats">
-                    已完成: {{ todayCompletedCount }} / {{ todayTasks.length }}
+                    已完成: {{ currentDateCompletedCount }} / {{ currentDateTasks.length }}
                 </p>
                 <TodoInput 
+                    id="todayTaskInput"
                     placeholder="添加任务..." 
                     @add-task="addTodayTask" 
                 />
                 <TodoList 
-                    :tasks="todayTasks" 
-                    @delete-task="deleteTodayTask"
-                    @toggle-task="toggleTodayTask"
+                    :tasks="currentDateTasks" 
+                    :current-date="currentDate"
+                    @delete-task="deleteTask"
+                    @toggle-task="toggleTask"
                 />
             </div>
 
-            <!-- 明日任务区域 -->
+            <!-- 下一天任务区域 -->
             <div class="task-section tomorrow-section">
                 <h2 class="section-title">🌙 {{ getCurrentNextDayDisplayDate() }} - 任务</h2>
                 <p class="task-stats">
-                    已完成: {{ currentNextDayTasks.filter(task => task.completed).length }} / {{ currentNextDayTasks.length }}
+                    已完成: {{ nextDayCompletedCount }} / {{ nextDayTasks.length }}
                 </p>
                 <TodoInput 
+                    id="tomorrowTaskInput"
                     placeholder="添加明天任务..." 
                     @add-task="addTomorrowTask" 
                 />
                 <TodoList 
-                    :tasks="currentNextDayTasks" 
-                    @delete-task="deleteTomorrowTask"
-                    @toggle-task="toggleTomorrowTask"
+                    :tasks="nextDayTasks" 
+                    :current-date="getNextDayDateString(currentDate || getTodayDateString())"
+                    @delete-task="deleteTask"
+                    @toggle-task="toggleTask"
                 />
             </div>
         </div>
@@ -1895,4 +1846,3 @@ body.dark-theme .time {
     }
 }
 </style>
-

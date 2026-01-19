@@ -5,6 +5,10 @@ export default {
         placeholder: {
             type: String,
             default: '请输入任务...'
+        },
+        inputId: {
+            type: String,
+            default: 'taskInput'
         }
     },
 
@@ -38,15 +42,21 @@ export default {
 
 <template>
     <div class="input-container">
+        <label :for="inputId" class="sr-only">添加任务</label>
         <input 
             type="text" 
             class="task-input"
+            :id="inputId"
+            :name="inputId"
             v-model="inputValue"
             :placeholder="placeholder"
+            title="输入任务标题后按回车或点击添加按钮"
             @keyup.enter="submitTask"
         >
         <button 
             class="add-btn"
+            type="button"
+            title="添加任务"
             @click="submitTask"
         >
             ➕ 添加
@@ -55,6 +65,18 @@ export default {
 </template>
 
 <style scoped>
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 .input-container {
     display: flex;
     gap: 10px;
@@ -71,6 +93,8 @@ export default {
     transition: border-color 0.3s, box-shadow 0.3s;
     background: #f5f5f5;
     color: #333;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 .task-input:focus {

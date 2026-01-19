@@ -5,6 +5,11 @@ export default {
         task: {
             type: Object,
             required: true
+        },
+        // 当前选中的日期（用于显示任务所属日期）
+        currentDate: {
+            type: String,
+            default: ''
         }
     },
 
@@ -27,6 +32,14 @@ export default {
                 'task-item': true,
                 'completed': this.task.completed
             }
+        },
+        // 显示的任务日期
+        taskDate() {
+            if (this.currentDate) {
+                const [year, month, day] = this.currentDate.split('-')
+                return `${year}年${parseInt(month)}月${parseInt(day)}日`
+            }
+            return this.task.createdAt
         }
     }
 }
@@ -46,7 +59,7 @@ export default {
             <!-- 任务信息 -->
             <div class="task-info">
                 <p class="task-title">{{ task.title }}</p>
-                <p class="task-time">创建于: {{ task.createdAt }}</p>
+                <p class="task-time">创建于: {{ taskDate }}</p>
             </div>
         </div>
 

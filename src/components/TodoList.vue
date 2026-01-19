@@ -13,6 +13,11 @@ export default {
             default() {
                 return []
             }
+        },
+        // 当前选中的日期
+        currentDate: {
+            type: String,
+            default: ''
         }
     },
 
@@ -56,6 +61,7 @@ export default {
                 v-for="task in sortedTasks" 
                 :key="task.id"
                 :task="task"
+                :current-date="currentDate"
                 @delete="handleDelete"
                 @toggle="handleToggle"
             />
